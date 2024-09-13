@@ -6,11 +6,27 @@ int main() {
     std::cout << "Content-Type: text/html\n\n";
     Crud myCrud;
     std::string param;
-
-    const char* query_string = getenv("QUERY_STRING");
+    std::string route;
+    const char* query_string = "";
+    // const char* query_string = getenv("QUERY_STRING");
+    // const char* content_string = getenv("CONTENT_LENGTH");
     std::string get;
-    
+    std::getline(std::cin, get);
+    query_string = get.c_str();
+
     param = myCrud.getParam(query_string);
+    route = myCrud.getRoute(getenv("QUERY_STRING"));
+
+
+    if (route == "create")
+    {
+        myCrud.renderCreate();
+    }
+    else if (route == "readAll")
+    {
+        myCrud.readData("../../data/bd.txt");
+    }
+    
 
     if(param == "delete"){
         myCrud.deleteData("../../data/bd.txt",query_string);
@@ -24,8 +40,6 @@ int main() {
     }
     else if (param == "update")
     {   
-        // getline(std::cin, get);
-        // query_string = get.c_str();
         query_string = getenv("QUERY_STRING");
         myCrud.setId(myCrud.getUrlId(query_string));
         std::cout << myCrud.getId() ;
@@ -33,12 +47,16 @@ int main() {
         myCrud.updateData("../../data/bd.txt", myCrud.getId());
         myCrud.readData("../../data/bd.txt");
     }
-    
-    else {
-        getline(std::cin, get);
-        query_string = get.c_str();
+
+    else if (param == "create"){
         myCrud.parseQueryString(query_string);
-        
+
+        if (myCrud.validInput())
+        {
+            myCrud.insertData("../../data/bd.txt");
+            myCrud.readData("../../data/bd.txt");
+        }
+  
     }
 
     return 0;

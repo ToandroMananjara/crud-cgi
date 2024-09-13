@@ -4,6 +4,7 @@
 #include "../header/Crud.hpp"
 #include <iostream>
 #include <cstring>
+#include <regex> 
 #include <vector>
 #include <sstream>
 #include <string>
@@ -39,7 +40,11 @@ void Crud::parseQueryString(const char* queryString) {
     nom = getValue(queryString, "nom=");
     nom = urlDecode(nom);
     prenom = getValue(queryString, "prenom=");
-    prenom = urlDecode(prenom);  
+    prenom = urlDecode(prenom);
+    email = getValue(queryString, "email=");
+    email = urlDecode(email);
+    dateNaissance = getValue(queryString, "dateNaissance=");
+    dateNaissance = urlDecode(dateNaissance);  
 }
 
 // Get the action using from removing or editing
@@ -49,6 +54,11 @@ std::string Crud::getParam(const char* queryString){
     return param;
 }
 
+std::string Crud::getRoute(const char* queryString){
+    std::string route;
+    route = getValue(queryString,"route=");
+    return route;
+}
 // Get id in the url from removing or editing the data
 int Crud::getUrlId(const char* queryString){
     int id = 0;
@@ -76,6 +86,41 @@ std::string Crud::urlDecode(const std::string &src) {
     return result;
 }
 
+
+
+std::string Crud::trim(const std::string &s) {
+    size_t start = s.find_first_not_of(' ');
+    size_t end = s.find_last_not_of(' ');
+    
+    // If the string is only spaces or empty, return an empty string
+    if (start == std::string::npos || end == std::string::npos) {
+        return "";
+    }
+    
+    return s.substr(start, end - start + 1);
+}
+bool Crud::isNotBlank(const std::string &s) {
+    return !trim(s).empty();  // Return true if the trimmed string is not empty
+}
+bool Crud::validInput(){
+    std::regex nomPattern("^[A-Za-zÀ-ÿ '-]+$");
+    std::regex prenomPattern("^[A-Za-zÀ-ÿ '-]+$");
+    std::regex emailPattern(R"(^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$)");
+    std::regex dobPattern("^\\d{4}-\\d{2}-\\d{2}$");
+    // std::regex agePattern("^([1-9]|[1-9][0-9]|1[0-9]{2})$"); 
+    // std::regex adressePattern("^[A-Za-z0-9À-ÿ ,'-]+$");
+
+    if (!isNotBlank(nom) || !isNotBlank(prenom) || !isNotBlank(email) || !isNotBlank(dateNaissance)) {
+        return false;  // Invalid if any input is blank
+    }
+    
+    bool isNomValid = std::regex_match(nom, nomPattern);
+    bool isPrenomValid = std::regex_match(prenom, prenomPattern);
+    bool isEmailValid = std::regex_match(email, emailPattern);
+    bool isDobValid = std::regex_match(dateNaissance, dobPattern);
+
+    return isNomValid && isPrenomValid && isEmailValid && isDobValid ;
+}
 // Create data in database txt
 void Crud::insertData(const std::string &filePath) {
     std::ofstream file(filePath, std::ios::app | std::ios::binary); // Ajout du mode binaire pour UTF-8
@@ -83,12 +128,11 @@ void Crud::insertData(const std::string &filePath) {
         std::cerr << "Erreur lors de l'ouverture du fichier." << std::endl;
     }
     else {
-        file << nom << ";" << prenom;
+        file << nom << ";" << prenom << ";" << email << ";" << dateNaissance ;
         file << "\n";
     }
     file.close();    
 }
-
 // Read data from the database txt
 void Crud::readData(const std::string &filePath){
     int id = 0;
@@ -110,6 +154,20 @@ void Crud::readData(const std::string &filePath){
             <title>Welcome</title>
             </head>
             <body>
+            <div>
+                <header>
+                    <div class="header">
+                        <div class="logo">Logo</div>
+
+                        <nav class="navbar-container">
+                            <ul>
+                                <li><a href="/monsite/traitement/crud/crud.cgi?route=create">Add new</a></li>
+                                <li><a href="/monsite/traitement/crud/crud.cgi?route=readAll">Lists</a></li>
+                            </ul>
+                        </nav>
+                    </div>
+                </header>
+            </div>
             <div class=" d-flex justify-content-center">
                 <table class="table ">
                 <thead class="w-100 table-dark">
@@ -117,7 +175,8 @@ void Crud::readData(const std::string &filePath){
                         <th scope="col" class="table-title text-center" data-name="id"># <i class="fa-solid fa-caret-down"></i></th>
                         <th scope="col" class="table-title text-center" data-name="nom">Nom<i class="fa-solid fa-caret-down"></i></th>
                         <th scope="col" class="table-title text-center" data-name="prenom">Prenom<i class="fa-solid fa-caret-down"></i></th>
-
+                        <th scope="col" class="table-title text-center" data-name="email">Email<i class="fa-solid fa-caret-down"></i></th>
+                        <th scope="col" class="table-title text-center" data-name="dateNaissance">Date de Naissance<i class="fa-solid fa-caret-down"></i></th>
                         <th scope="col" class="text-center" >Action</th>
                     </tr>
                 </thead>
@@ -125,26 +184,28 @@ void Crud::readData(const std::string &filePath){
                 )";
                 while (std::getline(file, line)) {
                     std::istringstream ss(line);
-                    std::string nom, prenom, age, tel;
+                    std::string nom, prenom, email, dateNaissance;
                     std::getline(ss, nom, ';');
                     std::getline(ss, prenom, ';');
-                    std::getline(ss, age, ';');
-                    std::getline(ss, tel);
+                    std::getline(ss, email, ';');
+                    std::getline(ss, dateNaissance);
 
                     if (!line.empty()) {
                         std::cout << "<tr class=\"row-table\">"
                                 << "<th scope=\"row\" class=\"text-center\">" << id << "</th>"
                                 << "<td class=\"text-center\">" << nom << "</td>"
                                 << "<td class=\"text-center\">" << prenom << "</td>"
+                                << "<td class=\"text-center\">" << email << "</td>"
+                                << "<td class=\"text-center\">" << dateNaissance << "</td>"
                                 << "<td class=\"text-center d-flex gap-3 justify-content-center\">"
                                 << "<a href=\"\" class=\"btn btn-primary\"><i class=\"fa-regular fa-eye\"></i></a>"
                                 //<< "<a href=\"?id=" << id << "\" class=\"btn btn-success\"><i class=\"fa-regular fa-pen-to-square\"></i></a>"
-                                << "<form action=\"../crud/crud.cgi\" method=\"get\">"
+                                << "<form action=\"../crud/crud.cgi\" method=\"post\">"
                                 << "<input type=\"hidden\" name=\"id\" value=\"" << id << "\"/>"
                                 << "<input type=\"hidden\" name=\"action\" value=\"edit\"/>"
                                 << "<button type=\"submit\" class=\"btn btn-success\"><i class=\"fa-regular fa-pen-to-square\"></i></button>"
                                 << "</form>"                               
-                                << "<form action=\"../crud/crud.cgi\" method=\"get\">"
+                                << "<form action=\"../crud/crud.cgi\" method=\"post\">"
                                 << "<input type=\"hidden\" name=\"id\" value=\"" << id << "\"/>"
                                 << "<input type=\"hidden\" name=\"action\" value=\"delete\"/>"
                                 << "<button type=\"submit\" class=\"btn btn-danger\"><i class=\"fa-solid fa-trash\"></i></button>"
@@ -228,6 +289,12 @@ void Crud::getData(const std::string &filePath, const char* queryString) {
         if (std::getline(stream, part, ';')) {
             prenom = part;
         }
+        if (std::getline(stream, part, ';')) {
+            email = part;
+        }
+        if (std::getline(stream, part, ';')) {
+            dateNaissance = part;
+        }
     }
     file.close(); // Ferme le fichier
 }
@@ -249,7 +316,7 @@ void Crud::updateData(const std::string &filePath, int id){
             lines.push_back(line); 
         }
         else {
-            line = nom + ";" + prenom;
+            line = nom + ";" + prenom + ";" + email + ";" + dateNaissance;
             lines.push_back(line);
         }
         count++;
@@ -298,6 +365,7 @@ void Crud::renderCreate() const {
 
                     <div class="container d-flex justify-content-center">
                         <form action="../crud/crud.cgi" method="post" style="width:50vw; min-width:300px;" accept-charset="UTF-8">
+                            
                             <div class="row mb-2">
                                 <div class="col">
                                     <label for="nom" class="form-label">Nom:</label>
@@ -310,10 +378,21 @@ void Crud::renderCreate() const {
                                 </div>
                             </div>
 
+                            <div class="row mb-2">
+                                <div class="col">
+                                    <label for="email" class="form-label">Email:</label>
+                                    <input type="email" class="form-control" name="email" placeholder="email@example.com" required>
+                                </div>
+                                <div class="col" style="width:50%">
+                                    <label for="dateNaissance" class="form-label">Date de naissance:</label>
+                                    <input type="date" class="form-control" name="dateNaissance" required>
+                                </div>
+                            </div>
+
+                            <input type="hidden" name="action" value="create">
                             <div class="">
                                 <button type="submit" class="btn btn-success" name="submit"
                                     style="padding-right:2em;padding-left:2em;">Ajouter</button>
-
                             </div>
                         </form>
                     </div>
@@ -366,6 +445,17 @@ void Crud::renderEdit() const {
                                 <div class="col">
                                     <label for="prenom" class="form-label">Prenom:</label>
                                     <input type="text" class="form-control" name="prenom" placeholder="Your last name" value= ")" + prenom + R"( " required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col">
+                                    <label for="email" class="form-label">Email:</label>
+                                    <input type="email" class="form-control" name="email" placeholder="email@example.com"  value= ")" + email + R"( " required>
+                                </div>
+                                <div class="col" style="width:50%">
+                                    <label for="dateNaissance" class="form-label">Date de naissance:</label>
+                                    <input type="date" class="form-control" name="dateNaissance"  value= ")" + dateNaissance + R"( " required>
                                 </div>
                             </div>
 
